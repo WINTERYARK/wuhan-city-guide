@@ -34,7 +34,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   "rating": "评分数字(1-5之间，无法确认则为null)",
   "priceMin": "最低价格(数字，无法确认则为null)",
   "priceMax": "最高价格(数字，无法确认则为null)",
-  "category": "分类，必须是以下之一: clothes, malls, breakfast, lunch, dinner, coffee, bars；无法确认则为null",
+  "category": "分类，必须是以下之一: clothes, malls, breakfast, meal, coffee, bakery, bars；无法确认则为null",
   "kind": "具体类型，无法确认则为null",
   "description": "一段简短推荐文案，尽量包含推荐菜品/单品；无法确认则为null",
   "city": "城市名称，无法确认则为null",

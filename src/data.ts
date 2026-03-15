@@ -1,4 +1,4 @@
-export type Category = 'clothes' | 'malls' | 'breakfast' | 'lunch' | 'dinner' | 'coffee' | 'bars';
+export type Category = 'clothes' | 'malls' | 'breakfast' | 'meal' | 'coffee' | 'bakery' | 'bars';
 
 export interface Place {
   id: string;
@@ -17,9 +17,9 @@ export const CATEGORY_COLORS: Record<Category, string> = {
   clothes: '#ec4899',
   malls: '#8b5cf6',
   breakfast: '#f59e0b',
-  lunch: '#ef4444',
-  dinner: '#b91c1c',
+  meal: '#dc2626',
   coffee: '#78350f',
+  bakery: '#d97706',
   bars: '#3b82f6',
 };
 
@@ -27,8 +27,8 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   clothes: '衣服',
   malls: '商场',
   breakfast: '早餐',
-  lunch: '午餐',
-  dinner: '晚餐',
+  meal: '正餐',
   coffee: '咖啡店',
+  bakery: '面包店',
   bars: '酒吧',
 };

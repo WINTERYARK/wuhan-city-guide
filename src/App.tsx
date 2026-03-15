@@ -13,7 +13,7 @@ export default function App() {
   const { places: placesList, loading: placesLoading, addPlace, deletePlace, toggleFavorite } = usePlaces(user?.id);
 
   const [activeCategories, setActiveCategories] = useState<Set<Category>>(
-    new Set(['clothes', 'malls', 'breakfast', 'lunch', 'dinner', 'coffee', 'bars'])
+    new Set(['clothes', 'malls', 'breakfast', 'meal', 'coffee', 'bakery', 'bars'])
   );
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -133,13 +133,13 @@ export default function App() {
 
   const inferCategoryFromPoi = useCallback((poi: PoiItem): Category | null => {
     const content = [poi.type, poi.business?.tag, poi.name].filter(Boolean).join(' ');
+    if (/面包|烘焙|吐司|可颂|蛋糕|甜品店|bread|bakery/i.test(content)) return 'bakery';
     if (/咖啡|咖啡厅|coffee/i.test(content)) return 'coffee';
     if (/酒吧|livehouse|清吧|bar/i.test(content)) return 'bars';
     if (/商场|广场|购物中心|mall/i.test(content)) return 'malls';
     if (/服装|女装|男装|服饰|买手店/i.test(content)) return 'clothes';
     if (/早餐|早茶|早点|包子|豆浆|面窝/i.test(content)) return 'breakfast';
-    if (/火锅|烧烤|夜宵|晚餐|排档|烤肉/i.test(content)) return 'dinner';
-    if (/餐饮服务|美食|小吃|餐厅|料理|面馆|饭店|食堂/i.test(content)) return 'lunch';
+    if (/火锅|烧烤|夜宵|晚餐|排档|烤肉|正餐|餐饮服务|美食|小吃|餐厅|料理|面馆|饭店|食堂/i.test(content)) return 'meal';
     return null;
   }, []);
 
