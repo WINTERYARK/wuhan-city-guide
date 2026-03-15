@@ -52,6 +52,12 @@ export default function App() {
 
   const isLoggedIn = !!user;
 
+  const ensureMobileDrawerVisible = useCallback(() => {
+    if (window.innerWidth < 768) {
+      document.dispatchEvent(new CustomEvent('mobile-drawer-open'));
+    }
+  }, []);
+
   const prepareImageForAi = async (file: File): Promise<string> => {
     const supportedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
     if (!supportedTypes.has(file.type)) {
@@ -692,6 +698,8 @@ export default function App() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleAiSearch}
+              onFocus={ensureMobileDrawerVisible}
+              onTouchStart={ensureMobileDrawerVisible}
               disabled={isAiSearching}
               className="w-full h-full bg-transparent pl-10 pr-4 text-sm text-gray-800 focus:outline-none placeholder-gray-400 disabled:opacity-50 rounded-full md:hidden"
             />
@@ -701,6 +709,7 @@ export default function App() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleAiSearch}
+              onFocus={ensureMobileDrawerVisible}
               disabled={isAiSearching}
               className="w-full h-full bg-transparent pl-12 pr-4 text-sm text-gray-800 focus:outline-none placeholder-gray-400 disabled:opacity-50 rounded-full hidden md:block"
             />

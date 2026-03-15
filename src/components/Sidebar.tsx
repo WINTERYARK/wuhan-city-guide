@@ -50,6 +50,19 @@ export default function Sidebar({
   }, [aiReasoning]);
 
   useEffect(() => {
+    const handleOpenDrawer = () => {
+      if (window.innerWidth < 768) {
+        setIsOpen(true);
+        setIsMaximized(false);
+        setIsExpanding(true);
+      }
+    };
+
+    document.addEventListener('mobile-drawer-open', handleOpenDrawer);
+    return () => document.removeEventListener('mobile-drawer-open', handleOpenDrawer);
+  }, []);
+
+  useEffect(() => {
     const updateHeight = () => {
       if (window.innerWidth < 768) {
         const root = document.documentElement;

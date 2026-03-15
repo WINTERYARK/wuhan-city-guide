@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { Place, CATEGORY_COLORS, CATEGORY_LABELS } from '../data';
 import { loadAMap, createColoredMarkerContent } from '../lib/amap';
 import { Star, LocateFixed, Expand, Heart, Maximize2, X, Building2, Trash2 } from 'lucide-react';
@@ -11,7 +11,7 @@ interface MapViewProps {
   onDeletePlace: (id: string) => void;
 }
 
-const CITIES: { name: string; position: [number, number] }[] = [
+const DEFAULT_CITIES: { name: string; position: [number, number] }[] = [
   { name: '武汉', position: [30.5928, 114.3055] },
   { name: '上海', position: [31.2304, 121.4737] },
   { name: '北京', position: [39.9042, 116.4074] },
@@ -28,6 +28,21 @@ export default function MapView({ places, selectedPlaceId, onSelectPlace, onTogg
   const [showCityMenu, setShowCityMenu] = useState(false);
   const [expandedPlaceId, setExpandedPlaceId] = useState<string | null>(null);
   const expandedPlace = expandedPlaceId ? places.find(p => p.id === expandedPlaceId) : null;
+  const cityOptions = useMemo(() => {
+    const cityMap = new Map<string, [number, number]>();
+
+    DEFAULT_CITIES.forEach((city) => {
+      cityMap.set(city.name, city.position);
+    });
+
+    places.forEach((place) => {
+      const cityName = place.city?.trim();
+      if (!cityName || cityMap.has(cityName)) return;
+      cityMap.set(cityName, place.position);
+    });
+
+    return Array.from(cityMap.entries()).map(([name, position]) => ({ name, position }));
+  }, [places]);
 
   useEffect(() => {
     let mounted = true;
@@ -249,7 +264,7 @@ export default function MapView({ places, selectedPlaceId, onSelectPlace, onTogg
           {showCityMenu && (
             <div className="absolute bottom-full left-0 mb-2 w-32 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-bottom-2">
               <div className="py-1">
-                {CITIES.map((city) => (
+                {cityOptions.map((city) => (
                   <button
                     key={city.name}
                     onClick={() => handleCitySwitch(city.position)}
