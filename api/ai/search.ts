@@ -35,7 +35,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body: JSON.stringify({
         model: KIMI_MODEL,
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-        temperature: 1,
+        extra_body: {
+          thinking: { type: 'disabled' },
+        },
         response_format: { type: 'json_object' },
       }),
     });

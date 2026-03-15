@@ -158,10 +158,6 @@ export default function MapView({ places, selectedPlaceId, onSelectPlace, onTogg
       false,
       800
     );
-
-    if (window.innerWidth < 768) {
-      setExpandedPlaceId(place.id);
-    }
   }, [mapReady, selectedPlaceId, places, buildInfoContent]);
 
   useEffect(() => {

@@ -26,7 +26,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 2. 如果字段不确定，请返回 null，不要凭空猜测。
 3. 如果只有店铺名称或信息明显不完整，请把 needsPoiEnrichment 设为 true。
 4. confidence 取值 0-1，表示你对本次提取结果整体可信度的判断。
-5. 你必须返回严格的 JSON 格式，不要包含任何其他文字。
+5. description 需要写成简短推荐文案，除了基础介绍外，尽量加入推荐菜品/招牌单品；如果无法确认推荐菜品/单品，可只写基础介绍。
+6. 你必须返回严格的 JSON 格式，不要包含任何其他文字。
 {
   "name": "店铺名称",
   "rating": "评分数字(1-5之间，无法确认则为null)",
@@ -34,7 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   "priceMax": "最高价格(数字，无法确认则为null)",
   "category": "分类，必须是以下之一: clothes, malls, breakfast, lunch, dinner, coffee, bars；无法确认则为null",
   "kind": "具体类型，无法确认则为null",
-  "description": "一段简短描述，无法确认则为null",
+  "description": "一段简短推荐文案，尽量包含推荐菜品/单品；无法确认则为null",
   "city": "城市名称，无法确认则为null",
   "needsPoiEnrichment": true,
   "confidence": 0.0
@@ -59,7 +60,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body: JSON.stringify({
         model: KIMI_MODEL,
         messages,
-        temperature: 1,
+        extra_body: {
+          thinking: { type: 'disabled' },
+        },
         response_format: { type: 'json_object' },
       }),
     });
