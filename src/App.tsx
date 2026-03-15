@@ -43,6 +43,7 @@ export default function App() {
 
   const [aiInputText, setAiInputText] = useState('');
   const [aiInputImage, setAiInputImage] = useState<File | null>(null);
+  const [aiInputImageDataUrl, setAiInputImageDataUrl] = useState<string | null>(null);
   const [aiInputImagePreview, setAiInputImagePreview] = useState<string | null>(null);
   const [isAiRecognizing, setIsAiRecognizing] = useState(false);
   const [isPoiEnriching, setIsPoiEnriching] = useState(false);
@@ -50,12 +51,50 @@ export default function App() {
 
   const isLoggedIn = !!user;
 
-  const fileToBase64 = async (file: File): Promise<string> => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.readAsDataURL(file);
-    });
+  const prepareImageForAi = async (file: File): Promise<string> => {
+    const supportedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+    if (!supportedTypes.has(file.type)) {
+      throw new Error('请上传 PNG、JPG 或 WEBP 格式的图片。');
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    try {
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('图片读取失败，请换一张图片重试。'));
+        img.src = objectUrl;
+      });
+
+      const maxSide = 1280;
+      const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+      const width = Math.max(1, Math.round(image.width * scale));
+      const height = Math.max(1, Math.round(image.height * scale));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+
+      const context = canvas.getContext('2d');
+      if (!context) {
+        throw new Error('浏览器暂不支持图片预处理，请稍后重试。');
+      }
+
+      context.drawImage(image, 0, 0, width, height);
+
+      let quality = 0.82;
+      let dataUrl = canvas.toDataURL('image/jpeg', quality);
+      const estimateBytes = (value: string) => Math.ceil((value.length - value.indexOf(',') - 1) * 0.75);
+
+      while (estimateBytes(dataUrl) > 2_000_000 && quality > 0.5) {
+        quality -= 0.08;
+        dataUrl = canvas.toDataURL('image/jpeg', quality);
+      }
+
+      return dataUrl;
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
   };
 
   const clearAddPlaceForm = useCallback(() => {
@@ -69,6 +108,7 @@ export default function App() {
     setNewCity('');
     setAiInputText('');
     setAiInputImage(null);
+    setAiInputImageDataUrl(null);
     setAiInputImagePreview(null);
     setIsAiRecognizing(false);
     setIsPoiEnriching(false);
@@ -128,8 +168,8 @@ export default function App() {
     setIsAiRecognizing(true);
     try {
       let imageData: string | undefined;
-      if (aiInputImage) {
-        imageData = await fileToBase64(aiInputImage);
+      if (aiInputImageDataUrl) {
+        imageData = aiInputImageDataUrl;
       }
 
       const data: AiRecognizeResult = await aiRecognize(aiInputText, imageData);
@@ -192,6 +232,7 @@ export default function App() {
 
       setAiInputText('');
       setAiInputImage(null);
+      setAiInputImageDataUrl(null);
       setAiInputImagePreview(null);
     } catch (error) {
       console.error('AI Recognition failed:', error);
@@ -742,6 +783,9 @@ export default function App() {
                 <p className="text-xs text-purple-700 mb-3">
                   粘贴大众点评/小红书分享文案，或上传截图，AI将自动提取信息。
                 </p>
+                <p className="text-[11px] text-purple-600/90 mb-3">
+                  图片会在上传时自动压缩并转成标准 JPG，仅支持 PNG、JPG、WEBP。
+                </p>
                 <textarea
                   value={aiInputText}
                   onChange={(e) => setAiInputText(e.target.value)}
@@ -755,12 +799,24 @@ export default function App() {
                     {aiInputImage ? '已选择图片' : '上传截图'}
                     <input
                       type="file"
-                      accept="image/*"
+                      accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
                       className="hidden"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          setAiInputImage(e.target.files[0]);
-                          setAiInputImagePreview(URL.createObjectURL(e.target.files[0]));
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+
+                        try {
+                          const normalizedDataUrl = await prepareImageForAi(file);
+                          setAiInputImage(file);
+                          setAiInputImageDataUrl(normalizedDataUrl);
+                          setAiInputImagePreview(normalizedDataUrl);
+                        } catch (error) {
+                          console.error('Prepare AI image failed:', error);
+                          alert(error instanceof Error ? error.message : '图片处理失败，请换一张图片重试。');
+                          setAiInputImage(null);
+                          setAiInputImageDataUrl(null);
+                          setAiInputImagePreview(null);
+                          e.target.value = '';
                         }
                       }}
                     />
@@ -785,7 +841,7 @@ export default function App() {
                     <img src={aiInputImagePreview} alt="Preview" className="h-20 rounded-lg border border-purple-200" />
                     <button
                       type="button"
-                      onClick={() => { setAiInputImage(null); setAiInputImagePreview(null); }}
+                      onClick={() => { setAiInputImage(null); setAiInputImageDataUrl(null); setAiInputImagePreview(null); }}
                       className="absolute -top-2 -right-2 bg-white rounded-full shadow-md p-1 text-gray-500 hover:text-red-500"
                     >
                       <X size={12} />
