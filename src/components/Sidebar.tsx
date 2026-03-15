@@ -354,8 +354,12 @@ export default function Sidebar({
                         key={place.id}
                         onClick={() => {
                           onSelectPlace(isSelected ? null : place.id);
-                          if (!isSelected && window.innerWidth < 768) {
-                            setShowDetailModal(true);
+                          if (window.innerWidth < 768) {
+                            setShowDetailModal(false);
+                            setIsOpen(false);
+                            setIsExpanding(true);
+                          } else if (!isSelected) {
+                            setShowDetailModal(false);
                           }
                         }}
                         className={`

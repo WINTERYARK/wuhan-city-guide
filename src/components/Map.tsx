@@ -49,6 +49,12 @@ export default function MapView({ places, selectedPlaceId, onSelectPlace, onTogg
         offset: new window.AMap.Pixel(0, -20),
       });
 
+      map.on('click', () => {
+        onSelectPlace(null);
+        setExpandedPlaceId(null);
+        setShowCityMenu(false);
+      });
+
       setMapReady(true);
     }).catch(err => {
       console.error('Failed to load AMap:', err);
@@ -146,8 +152,15 @@ export default function MapView({ places, selectedPlaceId, onSelectPlace, onTogg
     infoWindow.setContent(buildInfoContent(place));
     infoWindow.open(map, new window.AMap.LngLat(place.position[1], place.position[0]));
 
-    if (window.innerWidth >= 768) {
-      map.setZoomAndCenter(17, new window.AMap.LngLat(place.position[1], place.position[0]), false, 800);
+    map.setZoomAndCenter(
+      window.innerWidth >= 768 ? 17 : 15,
+      new window.AMap.LngLat(place.position[1], place.position[0]),
+      false,
+      800
+    );
+
+    if (window.innerWidth < 768) {
+      setExpandedPlaceId(place.id);
     }
   }, [mapReady, selectedPlaceId, places, buildInfoContent]);
 
@@ -257,8 +270,14 @@ export default function MapView({ places, selectedPlaceId, onSelectPlace, onTogg
 
       {/* Mobile Expanded Place Modal */}
       {expandedPlace && (
-        <div className="md:hidden absolute inset-0 z-[2000] bg-black/20 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+        <div
+          className="md:hidden absolute inset-0 z-[2000] bg-black/20 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setExpandedPlaceId(null)}
+        >
+          <div
+            className="bg-white/90 backdrop-blur-md rounded-2xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="relative h-40 bg-gray-200 shrink-0">
               <img
                 src={`https://picsum.photos/seed/${expandedPlace.id}/400/200`}
