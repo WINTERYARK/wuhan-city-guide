@@ -40,6 +40,7 @@ export default function App() {
   const [newKind, setNewKind] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newCity, setNewCity] = useState('');
+  const [newPoiLocation, setNewPoiLocation] = useState<[number, number] | null>(null);
 
   const [aiInputText, setAiInputText] = useState('');
   const [aiInputImage, setAiInputImage] = useState<File | null>(null);
@@ -106,6 +107,7 @@ export default function App() {
     setNewKind('');
     setNewDescription('');
     setNewCity('');
+    setNewPoiLocation(null);
     setAiInputText('');
     setAiInputImage(null);
     setAiInputImageDataUrl(null);
@@ -145,6 +147,13 @@ export default function App() {
     return `位于${parts.join('，')}。`;
   }, []);
 
+  const parsePoiLocation = useCallback((location?: string | null) => {
+    if (!location) return null;
+    const [lng, lat] = location.split(',').map(Number);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return [lat, lng] as [number, number];
+  }, []);
+
   const pickBestPoi = useCallback((keyword: string, pois: PoiItem[]) => {
     if (pois.length === 0) return null;
     const normalizedKeyword = keyword.trim().toLowerCase();
@@ -177,6 +186,7 @@ export default function App() {
       const recognizedName = data.name?.trim() || '';
       const recognizedCity = data.city?.trim() || '';
 
+      setNewPoiLocation(null);
       if (recognizedName) setNewName(recognizedName);
       if (typeof data.rating === 'number') setNewRating(String(data.rating));
       if (typeof data.priceMin === 'number') setNewPriceMin(String(data.priceMin));
@@ -210,6 +220,7 @@ export default function App() {
             const costRange = parsePoiCostRange(matchedPoi.business?.cost);
             const inferredCategory = inferCategoryFromPoi(matchedPoi);
             const inferredDescription = buildPoiDescription(matchedPoi);
+            const preciseLocation = parsePoiLocation(matchedPoi.location);
 
             if (matchedPoi.business?.rating) setNewRating(String(Number(matchedPoi.business.rating)));
             if (costRange) {
@@ -222,6 +233,7 @@ export default function App() {
             }
             if (!data.description && inferredDescription) setNewDescription(inferredDescription);
             if (matchedPoi.cityname) setNewCity(matchedPoi.cityname);
+            if (preciseLocation) setNewPoiLocation(preciseLocation);
           }
         } catch (poiError) {
           console.error('POI enrichment failed:', poiError);
@@ -262,15 +274,27 @@ export default function App() {
       let lng = 114.3055;
 
       try {
-        const jsResult = await geocodeAddress(`${newCity} ${newName}`, newCity);
-        if (jsResult) {
-          [lat, lng] = jsResult;
+        if (newPoiLocation) {
+          [lat, lng] = newPoiLocation;
         } else {
-          const geoResult = await geocode(`${newCity} ${newName}`, newCity);
-          if (geoResult.status === '1' && geoResult.geocodes?.length > 0) {
-            const [gLng, gLat] = geoResult.geocodes[0].location.split(',').map(Number);
-            lat = gLat;
-            lng = gLng;
+          const poiResult = await poiSearch(newName, newCity || undefined);
+          const matchedPoi = pickBestPoi(newName, poiResult.pois || []);
+          const poiLocation = parsePoiLocation(matchedPoi?.location);
+
+          if (poiLocation) {
+            [lat, lng] = poiLocation;
+          } else {
+            const jsResult = await geocodeAddress(`${newCity} ${newName}`, newCity);
+            if (jsResult) {
+              [lat, lng] = jsResult;
+            } else {
+              const geoResult = await geocode(`${newCity} ${newName}`, newCity);
+              if (geoResult.status === '1' && geoResult.geocodes?.length > 0) {
+                const [gLng, gLat] = geoResult.geocodes[0].location.split(',').map(Number);
+                lat = gLat;
+                lng = gLng;
+              }
+            }
           }
         }
       } catch {
@@ -864,7 +888,10 @@ export default function App() {
                     type="text"
                     required
                     value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
+                    onChange={(e) => {
+                      setNewName(e.target.value);
+                      setNewPoiLocation(null);
+                    }}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="例如：黄鹤楼"
                   />
@@ -875,7 +902,10 @@ export default function App() {
                     type="text"
                     required
                     value={newCity}
-                    onChange={(e) => setNewCity(e.target.value)}
+                    onChange={(e) => {
+                      setNewCity(e.target.value);
+                      setNewPoiLocation(null);
+                    }}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="例如：武汉"
                   />
