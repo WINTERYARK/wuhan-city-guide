@@ -1,28 +1,27 @@
-import { searchPoiAround } from '../../../server/lib/amapService';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-export default async function handler(req: any, res: any) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
     const { location, keywords, types, radius, page, page_size, show_fields } = req.query || {};
-    if (!location) {
-      return res.status(400).json({ error: 'Missing location parameter (lng,lat)' });
-    }
+    if (!location) return res.status(400).json({ error: 'Missing location parameter' });
 
-    const data = await searchPoiAround({
-      location: String(location),
-      keywords: keywords ? String(keywords) : undefined,
-      types: types ? String(types) : undefined,
-      radius: radius ? String(radius) : undefined,
-      page: page ? String(page) : undefined,
-      page_size: page_size ? String(page_size) : undefined,
-      show_fields: show_fields ? String(show_fields) : undefined,
+    const key = process.env.AMAP_WEB_KEY;
+    if (!key) return res.status(500).json({ error: 'AMAP_WEB_KEY not configured' });
+
+    const params = new URLSearchParams({
+      key, location: String(location),
+      ...(keywords ? { keywords: String(keywords) } : {}),
+      ...(types ? { types: String(types) } : {}),
+      radius: String(radius || 5000), sortrule: 'distance',
+      show_fields: String(show_fields || 'business'),
+      page_size: String(page_size || 10), page_num: String(page || 1),
     });
-    return res.status(200).json(data);
+    const response = await fetch(`https://restapi.amap.com/v5/place/around?${params}`);
+    return res.status(200).json(await response.json());
   } catch (error) {
-    console.error('POI around search error:', error);
+    console.error('POI around error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
