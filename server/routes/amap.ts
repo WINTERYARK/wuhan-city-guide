@@ -1,15 +1,7 @@
 import { Router, Request, Response } from 'express';
+import { geocodeAddress, inputTipsSearch, reverseGeocode, searchPoi, searchPoiAround } from '../lib/amapService';
 
 export const amapRouter = Router();
-
-const AMAP_BASE = 'https://restapi.amap.com/v3';
-const AMAP_V5_BASE = 'https://restapi.amap.com/v5';
-
-function getAmapKey(): string {
-  const key = process.env.AMAP_WEB_KEY;
-  if (!key) throw new Error('AMAP_WEB_KEY is not set');
-  return key;
-}
 
 // 地理编码: 结构化地址 → 经纬度
 // https://restapi.amap.com/v3/geocode/geo
@@ -20,15 +12,7 @@ amapRouter.get('/geocode', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Missing address parameter' });
     }
 
-    const params = new URLSearchParams({
-      key: getAmapKey(),
-      address: String(address),
-      output: 'JSON',
-      ...(city ? { city: String(city) } : {}),
-    });
-
-    const response = await fetch(`${AMAP_BASE}/geocode/geo?${params}`);
-    const data = await response.json();
+    const data = await geocodeAddress(String(address), city ? String(city) : undefined);
     res.json(data);
   } catch (error) {
     console.error('Geocode error:', error);
@@ -45,17 +29,12 @@ amapRouter.get('/reverse-geocode', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Missing location parameter (lng,lat)' });
     }
 
-    const params = new URLSearchParams({
-      key: getAmapKey(),
-      location: String(location),
-      output: 'JSON',
-      extensions: String(extensions || 'base'),
-      radius: String(radius || 1000),
-      ...(poitype ? { poitype: String(poitype) } : {}),
-    });
-
-    const response = await fetch(`${AMAP_BASE}/geocode/regeo?${params}`);
-    const data = await response.json();
+    const data = await reverseGeocode(
+      String(location),
+      extensions ? String(extensions) : undefined,
+      radius ? String(radius) : undefined,
+      poitype ? String(poitype) : undefined
+    );
     res.json(data);
   } catch (error) {
     console.error('Reverse geocode error:', error);
@@ -72,19 +51,15 @@ amapRouter.get('/poi', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Must provide keywords or types' });
     }
 
-    const params = new URLSearchParams({
-      key: getAmapKey(),
-      ...(keywords ? { keywords: String(keywords) } : {}),
-      ...(types ? { types: String(types) } : {}),
-      ...(city ? { region: String(city) } : {}),
-      city_limit: String(city_limit || (city ? 'true' : 'false')),
-      show_fields: String(show_fields || 'business'),
-      page_size: String(page_size || 10),
-      page_num: String(page || 1),
+    const data = await searchPoi({
+      keywords: keywords ? String(keywords) : undefined,
+      types: types ? String(types) : undefined,
+      city: city ? String(city) : undefined,
+      city_limit: city_limit ? String(city_limit) : undefined,
+      page: page ? String(page) : undefined,
+      page_size: page_size ? String(page_size) : undefined,
+      show_fields: show_fields ? String(show_fields) : undefined,
     });
-
-    const response = await fetch(`${AMAP_V5_BASE}/place/text?${params}`);
-    const data = await response.json();
     res.json(data);
   } catch (error) {
     console.error('POI search error:', error);
@@ -101,20 +76,15 @@ amapRouter.get('/poi/around', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Missing location parameter (lng,lat)' });
     }
 
-    const params = new URLSearchParams({
-      key: getAmapKey(),
+    const data = await searchPoiAround({
       location: String(location),
-      ...(keywords ? { keywords: String(keywords) } : {}),
-      ...(types ? { types: String(types) } : {}),
-      radius: String(radius || 5000),
-      sortrule: 'distance',
-      show_fields: String(show_fields || 'business'),
-      page_size: String(page_size || 10),
-      page_num: String(page || 1),
+      keywords: keywords ? String(keywords) : undefined,
+      types: types ? String(types) : undefined,
+      radius: radius ? String(radius) : undefined,
+      page: page ? String(page) : undefined,
+      page_size: page_size ? String(page_size) : undefined,
+      show_fields: show_fields ? String(show_fields) : undefined,
     });
-
-    const response = await fetch(`${AMAP_V5_BASE}/place/around?${params}`);
-    const data = await response.json();
     res.json(data);
   } catch (error) {
     console.error('POI around search error:', error);
@@ -132,18 +102,14 @@ amapRouter.get('/tips', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Missing keywords parameter' });
     }
 
-    const params = new URLSearchParams({
-      key: getAmapKey(),
+    const data = await inputTipsSearch({
       keywords: String(keywords),
-      ...(city ? { city: String(city) } : {}),
-      ...(citylimit ? { citylimit: String(citylimit) } : {}),
-      ...(type ? { type: String(type) } : {}),
-      ...(location ? { location: String(location) } : {}),
-      datatype: String(datatype || 'poi'),
+      city: city ? String(city) : undefined,
+      citylimit: citylimit ? String(citylimit) : undefined,
+      type: type ? String(type) : undefined,
+      location: location ? String(location) : undefined,
+      datatype: datatype ? String(datatype) : undefined,
     });
-
-    const response = await fetch(`${AMAP_BASE}/assistant/inputtips?${params}`);
-    const data = await response.json();
     res.json(data);
   } catch (error) {
     console.error('Input tips error:', error);

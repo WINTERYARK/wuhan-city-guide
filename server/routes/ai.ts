@@ -1,15 +1,7 @@
 import { Router, Request, Response } from 'express';
+import { recognizeWithKimi, searchWithKimi } from '../lib/aiService';
 
 export const aiRouter = Router();
-
-const KIMI_BASE_URL = 'https://api.moonshot.cn/v1';
-const KIMI_MODEL = 'kimi-k2.5';
-
-function getKimiKey(): string {
-  const key = process.env.KIMI_API_KEY;
-  if (!key) throw new Error('KIMI_API_KEY is not set');
-  return key;
-}
 
 aiRouter.post('/search', async (req: Request, res: Response) => {
   try {
@@ -18,45 +10,7 @@ aiRouter.post('/search', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Missing query or places' });
     }
 
-    const systemPrompt = `你是一个本地生活推荐助手。用户会给你一个需求和一组地点列表。
-请从中推荐恰好2个最符合用户需求的地点。
-你必须返回严格的 JSON 格式，不要包含任何其他文字：
-{
-  "recommendedIds": ["地点id1", "地点id2"],
-  "reasoning": "用中文简短解释为什么推荐这两个地点"
-}`;
-
-    const userPrompt = `我的需求：${query}
-
-可选地点列表：
-${JSON.stringify(places.map((p: any) => ({ id: p.id, name: p.name, category: p.category, kind: p.kind, price: p.price, description: p.description, rating: p.rating })))}`;
-
-    const response = await fetch(`${KIMI_BASE_URL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getKimiKey()}`,
-      },
-      body: JSON.stringify({
-        model: KIMI_MODEL,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: 1,
-        response_format: { type: 'json_object' },
-      }),
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      console.error('Kimi API error:', err);
-      return res.status(502).json({ error: 'AI service error' });
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '{}';
-    const result = JSON.parse(content);
+    const result = await searchWithKimi(query, places);
     res.json(result);
   } catch (error) {
     console.error('AI search error:', error);
@@ -71,66 +25,7 @@ aiRouter.post('/recognize', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Must provide text or image' });
     }
 
-    const systemPrompt = `你是一个本地生活信息提取助手。请从用户提供的文本或截图中提取出餐厅/店铺的信息。
-你的职责是“提取确定信息”，不是盲目补全。
-规则：
-1. 优先提取最确定的字段，如店铺名称、城市、门店类型、明显可见的价格或评分。
-2. 如果字段不确定，请返回 null，不要凭空猜测。
-3. 如果只有店铺名称或信息明显不完整，请把 needsPoiEnrichment 设为 true，方便后续用地图 POI 补全。
-4. confidence 取值 0-1，表示你对本次提取结果整体可信度的判断。
-5. 你必须返回严格的 JSON 格式，不要包含任何其他文字。
-{
-  "name": "店铺名称",
-  "rating": "评分数字(1-5之间，无法确认则为null)",
-  "priceMin": "最低价格(数字，无法确认则为null)",
-  "priceMax": "最高价格(数字，无法确认则为null)",
-  "category": "分类，必须是以下之一: clothes, malls, breakfast, lunch, dinner, coffee, bars；无法确认则为null",
-  "kind": "具体类型，无法确认则为null",
-  "description": "一段简短描述，无法确认则为null",
-  "city": "城市名称，无法确认则为null",
-  "needsPoiEnrichment": true,
-  "confidence": 0.0
-}`;
-
-    const messages: any[] = [
-      { role: 'system', content: systemPrompt },
-    ];
-
-    if (image) {
-      messages.push({
-        role: 'user',
-        content: [
-          ...(text ? [{ type: 'text', text: `用户输入内容：\n${text}` }] : []),
-          { type: 'image_url', image_url: { url: image } },
-        ],
-      });
-    } else {
-      messages.push({ role: 'user', content: `用户输入内容：\n${text}` });
-    }
-
-    const response = await fetch(`${KIMI_BASE_URL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getKimiKey()}`,
-      },
-      body: JSON.stringify({
-        model: KIMI_MODEL,
-        messages,
-        temperature: 1,
-        response_format: { type: 'json_object' },
-      }),
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      console.error('Kimi API error:', err);
-      return res.status(502).json({ error: 'AI service error' });
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '{}';
-    const result = JSON.parse(content);
+    const result = await recognizeWithKimi(text, image);
     res.json(result);
   } catch (error) {
     console.error('AI recognize error:', error);
