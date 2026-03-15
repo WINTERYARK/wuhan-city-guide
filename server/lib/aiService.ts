@@ -1,5 +1,7 @@
 const KIMI_BASE_URL = 'https://api.moonshot.cn/v1';
-const KIMI_MODEL = 'kimi-k2.5';
+const KIMI_SEARCH_MODEL = 'kimi-k2.5';
+const KIMI_RECOGNIZE_TEXT_MODEL = 'moonshot-v1-8k';
+const KIMI_RECOGNIZE_IMAGE_MODEL = 'moonshot-v1-8k-vision-preview';
 
 function getKimiKey(): string {
   const key = process.env.KIMI_API_KEY;
@@ -28,7 +30,7 @@ ${JSON.stringify(places.map((p: any) => ({ id: p.id, name: p.name, category: p.c
       'Authorization': `Bearer ${getKimiKey()}`,
     },
     body: JSON.stringify({
-      model: KIMI_MODEL,
+      model: KIMI_SEARCH_MODEL,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -93,11 +95,8 @@ export async function recognizeWithKimi(text?: string, image?: string) {
       'Authorization': `Bearer ${getKimiKey()}`,
     },
     body: JSON.stringify({
-      model: KIMI_MODEL,
+      model: image ? KIMI_RECOGNIZE_IMAGE_MODEL : KIMI_RECOGNIZE_TEXT_MODEL,
       messages,
-      extra_body: {
-        thinking: { type: 'disabled' },
-      },
       response_format: { type: 'json_object' },
     }),
   });

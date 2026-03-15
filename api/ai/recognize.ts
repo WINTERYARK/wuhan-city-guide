@@ -1,7 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const KIMI_BASE_URL = 'https://api.moonshot.cn/v1';
-const KIMI_MODEL = 'kimi-k2.5';
+const KIMI_TEXT_MODEL = 'moonshot-v1-8k';
+const KIMI_IMAGE_MODEL = 'moonshot-v1-8k-vision-preview';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -58,11 +59,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: KIMI_MODEL,
+        model: image ? KIMI_IMAGE_MODEL : KIMI_TEXT_MODEL,
         messages,
-        extra_body: {
-          thinking: { type: 'disabled' },
-        },
         response_format: { type: 'json_object' },
       }),
     });
